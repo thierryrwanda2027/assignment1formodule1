@@ -1,10 +1,8 @@
 // Import Express types Request and Response to strongly type our handler functions.
 // This enables TypeScript to validate that we are interacting with Express correctly, eliminating the use of 'any'.
 import { Request, Response } from 'express';
-// Import the Listing interface and our 'listings' array acting as the database.
+// Import the updated Listing interface and our 'listings' array acting as the database.
 import { Listing, listings } from '../models/listing.model';
-// Import the 'users' array so we can verify if a host exists when creating a listing.
-import { users } from '../models/user.model';
 
 // Export function to get all listings.
 export const getAllListings = (req: Request, res: Response) => {
@@ -14,9 +12,16 @@ export const getAllListings = (req: Request, res: Response) => {
 
 // Export function to get a specific listing by its ID.
 export const getListingById = (req: Request, res: Response) => {
-    // req.params.id grabs the dynamic ':id' variable from the URL path.
-    const id = req.params.id;
-    // Search the listings array for a listing whose id exactly matches the requested id.
+    // req.params.id grabs the dynamic ':id' variable from the URL path as a string.
+    // Since our new Listing model uses numbers for IDs, we must explicitly convert it using Number().
+    const id = Number(req.params.id);
+
+    // Guard Clause: Validate that the ID is actually a valid number
+    if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format. ID must be a number." });
+    }
+
+    // Search the listings array for a listing whose id exactly matches the requested numeric id.
     const listing = listings.find(l => l.id === id);
 
     // Guard Clause: If .find() returns undefined, the listing doesn't exist in our array.
@@ -32,45 +37,41 @@ export const getListingById = (req: Request, res: Response) => {
 
 // Export function to create a new listing via a POST request.
 export const createListing = (req: Request, res: Response) => {
-    // Destructure the required fields from the parsed incoming JSON request body (req.body).
-    const { title, description, price, hostId } = req.body;
+    // Destructure all the required fields from the parsed incoming JSON request body (req.body).
+    const { title, description, location, pricePerNight, guests, type, amenities, host, rating } = req.body;
 
-    // Guard Clause: Check if any of the mandatory fields are missing or undefined.
-    // Notice we use price === undefined because price could legitimately be 0.
-    if (!title || !description || price === undefined || !hostId) {
+    // Guard Clause: Check if any of the mandatory fields are missing.
+    if (!title || !description || !location || pricePerNight === undefined || guests === undefined || !type || !amenities || !host) {
         // Return 400 (Bad Request) if validation fails. The client needs to correct their payload.
-        return res.status(400).json({ error: "Missing required fields: title, description, price, and hostId are required." });
+        return res.status(400).json({ error: "Missing required fields. title, description, location, pricePerNight, guests, type, amenities, and host are required." });
     }
 
-    // Extra Validation: Ensure that the 'price' is strictly a number to prevent runtime errors.
-    if (typeof price !== 'number') {
-        // Return 400 (Bad Request) if the price isn't numerical.
-        return res.status(400).json({ error: "Price must be a number." });
+    // Extra Validation: Ensure the union type matches exactly what is expected
+    if (type !== "apartment" && type !== "house" && type !== "villa" && type !== "cabin") {
+        return res.status(400).json({ error: "Invalid type. Must be apartment, house, villa, or cabin." });
     }
 
-    // Business Logic: Check if the provided hostId actually corresponds to an existing user.
-    const hostUser = users.find(u => u.id === hostId);
-    
-    // Guard Clause: If the user doesn't exist, they can't create a listing.
-    if (!hostUser) {
-        // Return 404 (Not Found) or 400 depending on interpretation; 400 makes sense for invalid relational data.
-        return res.status(400).json({ error: "Invalid hostId: User does not exist." });
+    // Extra Validation: Ensure amenities is an array to strictly follow the string[] type
+    if (!Array.isArray(amenities)) {
+        return res.status(400).json({ error: "Amenities must be an array of strings." });
     }
 
-    // Guard Clause: Ensure the user creating the listing actually has the proper authorization ("host" role).
-    if (hostUser.role !== 'host') {
-        // Return a 400 (Bad Request) because a "guest" is strictly forbidden from creating listings.
-        return res.status(400).json({ error: "Only users with the 'host' role can create listings." });
-    }
+    // Determine the next ID by finding the maximum existing ID and adding 1.
+    // If the array is empty, default to 1.
+    const nextId = listings.length > 0 ? Math.max(...listings.map(l => l.id)) + 1 : 1;
 
     // Construct the new listing object conforming exactly to our strict Listing interface.
     const newListing: Listing = {
-        // Generate a random unique ID for the new listing (simple string generation).
-        id: Math.random().toString(36).substring(2, 9),
-        title, // Shorthand syntax equivalent to title: title
+        id: nextId,
+        title,
         description,
-        price,
-        hostId
+        location,
+        pricePerNight: Number(pricePerNight), // Enforce number type
+        guests: Number(guests),               // Enforce number type
+        type: type as "apartment" | "house" | "villa" | "cabin",
+        amenities,
+        host,
+        rating: rating !== undefined ? Number(rating) : undefined // Assign rating if provided
     };
 
     // Add the newly constructed listing to our in-memory database array.
@@ -83,10 +84,16 @@ export const createListing = (req: Request, res: Response) => {
 
 // Export function to update an existing listing via a PUT request.
 export const updateListing = (req: Request, res: Response) => {
-    // Extract the target listing ID from the URL parameters.
-    const id = req.params.id;
+    // Extract and convert the target listing ID from the URL parameters to a number.
+    const id = Number(req.params.id);
+
+    // Guard Clause: Validate ID format
+    if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format. ID must be a number." });
+    }
+
     // Extract potential update fields from the request body.
-    const { title, description, price } = req.body;
+    const { title, description, location, pricePerNight, guests, type, amenities, host, rating } = req.body;
 
     // Find the index of the target listing in the array to prepare for modification.
     const listingIndex = listings.findIndex(l => l.id === id);
@@ -97,19 +104,28 @@ export const updateListing = (req: Request, res: Response) => {
         return res.status(404).json({ error: "Listing not found" });
     }
 
+    // Validate type if provided
+    if (type && type !== "apartment" && type !== "house" && type !== "villa" && type !== "cabin") {
+        return res.status(400).json({ error: "Invalid type. Must be apartment, house, villa, or cabin." });
+    }
+
     // Get the existing listing object from the array using the found index.
     const existingListing = listings[listingIndex];
 
     // Construct the updated listing object by merging old and new data.
     const updatedListing: Listing = {
-        // The ID and hostId should remain immutable, so we rigidly retain the existing ones.
+        // ID remains completely immutable
         id: existingListing.id,
-        hostId: existingListing.hostId,
-        // For other fields, use the new value if provided, otherwise gracefully fallback to the existing value.
+        // For all other fields, use the newly provided value or gently fallback to the existing state.
         title: title || existingListing.title,
         description: description || existingListing.description,
-        // Handle price carefully to allow a price of 0 to be validly updated.
-        price: price !== undefined ? price : existingListing.price
+        location: location || existingListing.location,
+        pricePerNight: pricePerNight !== undefined ? Number(pricePerNight) : existingListing.pricePerNight,
+        guests: guests !== undefined ? Number(guests) : existingListing.guests,
+        type: type ? (type as "apartment" | "house" | "villa" | "cabin") : existingListing.type,
+        amenities: Array.isArray(amenities) ? amenities : existingListing.amenities,
+        host: host || existingListing.host,
+        rating: rating !== undefined ? Number(rating) : existingListing.rating
     };
 
     // Overwrite the old listing with the completely updated one in our database array.
@@ -121,8 +137,14 @@ export const updateListing = (req: Request, res: Response) => {
 
 // Export function to delete a listing via a DELETE request.
 export const deleteListing = (req: Request, res: Response) => {
-    // Grab the ID of the listing we wish to delete from the URL parameters.
-    const id = req.params.id;
+    // Extract and explicitly convert the ID from the URL string parameters to a Number.
+    const id = Number(req.params.id);
+
+    // Guard Clause: Ensure ID is a valid number
+    if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format. ID must be a number." });
+    }
+
     // Find the exact position (index) of the listing to delete.
     const listingIndex = listings.findIndex(l => l.id === id);
 
