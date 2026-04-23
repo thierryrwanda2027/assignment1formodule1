@@ -1,18 +1,42 @@
-// Export the User interface so it can be used in other files.
-// This interface defines the strict structure that a user object must follow,
-// ensuring there is no use of 'any' and keeping our application type-safe.
+// We define the exact shape a User MUST have.
 export interface User {
-    // The unique identifier for the user, represented as a string.
-    id: string;
-    // The user's name, represented as a string.
-    name: string;
-    // The user's email address, represented as a string.
-    email: string;
-    // The role must be exactly either "host" or "guest". 
-    // This is a strict union type that prevents any other string from being used, enforcing strict data integrity.
-    role: "host" | "guest";
+    id: number;                 // Auto-generated ID (required)
+    name: string;               // Full name (required)
+    email: string;              // Email address (required)
+    username: string;           // Login name (required)
+    phone: string;              // Phone number (required)
+    role: "host" | "guest";     // Union Type: Must be exactly "host" or "guest" (required)
+    avatar?: string;            // The '?' means this is optional. Can be missing.
+    bio?: string;               // The '?' means this is optional. Can be missing.
 }
 
-// Create an exported array to serve as our in-memory database for users.
-// By typing it strictly as 'User[]', TypeScript guarantees we can only store valid User objects inside it.
-export const users: User[] = [];
+// We create an in-memory array (our fake database) holding 3 mock users.
+// We use ': User[]' to tell TypeScript this array can ONLY hold objects that match the User interface.
+export const users: User[] = [
+    {
+        id: 1,
+        name: "Bila",
+        email: "bila@gmail.com.com",
+        username: "bila404",
+        phone: "07883729173",
+        role: "host",
+        bio: "Software Engineer from Kigali"
+    },
+    {
+        id: 2,
+        name: "Alice",
+        email: "alice@yahoo.com",
+        username: "alice_travels",
+        phone: "0792364791",
+        role: "guest"
+    },
+    {
+        id: 3,
+        name: "Bob",
+        email: "bob@microsoft.com",
+        username: "bob_builder",
+        phone: "0787263718",
+        role: "host",
+        avatar: "https://example.com/bob.jpg"
+    }
+];

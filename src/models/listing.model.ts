@@ -12,7 +12,7 @@ export interface Listing {
   host: string;                                     // Name of the host (required)
 }
 
-// We create an in-memory array holding 5 mock listings.
+// We create an in-memory array holding 3 mock listings.
 export const listings: Listing[] = [
   {
     id: 1,
@@ -61,7 +61,7 @@ export const listings: Listing[] = [
     rating: 4.0,
     host: "Emmy"
   },
-   {
+  {
     id: 5,
     title: "Rebero luxuries",
     description: "One of the beautiful house in kigali",
