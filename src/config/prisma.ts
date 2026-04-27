@@ -1,19 +1,8 @@
 import "dotenv/config";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
-// Extract the connection string from the .env file
-const connectionString = `${process.env["DATABASE_URL"]}`;
-
-// Set up the PostgreSQL connection pool
-const pool = new Pool({ connectionString });
-
-// Attach the pool to Prisma's PG Adapter
-const adapter = new PrismaPg(pool);
-
 // Instantiate the Prisma Client
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 // Define the connection function
 export const connectDB = async () => {
@@ -28,4 +17,4 @@ export const connectDB = async () => {
 };
 
 // Export prisma as the default tool for your controllers to use
-export default prisma;
+export default prisma;

@@ -9,6 +9,19 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  HOST
+  GUEST
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
 }
 
 model User {
@@ -17,10 +30,16 @@ model User {
   email    String    @unique
   username String    @unique
   phone    String
-  role     String
   avatar   String?
+  avatarPublicId String?
   bio      String?
+  password String
+  role     Role      @default(GUEST)
+  resetToken String?
+  resetTokenExpiry DateTime?
+  updatedAt DateTime @updatedAt
   listings Listing[]
+  bookings Booking[]
 }
 
 model Listing {
@@ -34,6 +53,31 @@ model Listing {
   location      String
   hostId        String
   host          User     @relation(fields: [hostId], references: [id])
+  photos        ListingPhoto[]
+  bookings      Booking[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+model ListingPhoto {
+  id        Int     @id @default(autoincrement())
+  url       String
+  publicId  String
+  listing   Listing @relation(fields: [listingId], references: [id])
+  listingId String
+}
+
+model Booking {
+  id        String        @id @default(uuid())
+  checkIn   DateTime
+  checkOut  DateTime
+  totalPrice Float
+  status    BookingStatus @default(PENDING)
+  guestId   String
+  guest     User          @relation(fields: [guestId], references: [id])
+  listingId String
+  listing   Listing       @relation(fields: [listingId], references: [id])
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
