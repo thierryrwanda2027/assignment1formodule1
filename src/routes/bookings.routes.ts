@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { createBooking, cancelBooking, getMyBookings } from "../controllers/bookings.controller";
 import { authenticate } from "../middlewares/auth.middleware";
+import { validate } from "../middlewares/validate.middleware";
+import { createBookingSchema } from "../schemas/booking.schema";
 
 const router = Router();
 
@@ -56,7 +58,7 @@ const router = Router();
  *       201:
  *         description: Booking created successfully
  */
-router.post("/", authenticate, createBooking);
+router.post("/", authenticate, validate(createBookingSchema), createBooking);
 
 /**
  * @swagger

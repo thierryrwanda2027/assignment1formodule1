@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { register, login, forgotPassword, resetPassword } from "../controllers/auth.controller";
+import { validate } from "../middlewares/validate.middleware";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../schemas/auth.schema";
 
 const router = Router();
 
@@ -71,7 +73,7 @@ const router = Router();
  *       400:
  *         description: Missing required fields
  */
-router.post("/register", register);
+router.post("/register", validate(registerSchema), register);
 
 /**
  * @swagger
@@ -98,7 +100,7 @@ router.post("/register", register);
  *                 user:
  *                   $ref: '#/components/schemas/User'
  */
-router.post("/login", login);
+router.post("/login", validate(loginSchema), login);
 
 /**
  * @swagger
@@ -119,7 +121,7 @@ router.post("/login", login);
  *       200:
  *         description: If an account exists, a reset link was sent.
  */
-router.post("/forgot-password", forgotPassword);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
 
 /**
  * @swagger
@@ -146,6 +148,6 @@ router.post("/forgot-password", forgotPassword);
  *       200:
  *         description: Password reset successful
  */
-router.post("/reset-password/:token", resetPassword);
+router.post("/reset-password/:token", validate(resetPasswordSchema), resetPassword);
 
 export default router;

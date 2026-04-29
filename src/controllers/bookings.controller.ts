@@ -3,35 +3,32 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import prisma from "../config/prisma";
 import { sendEmail } from "../config/email";
 import { bookingConfirmationEmail, bookingCancellationEmail } from "../templates/emails";
+import { catchAsync } from "../utils/catchAsync";
 
 // 1. CREATE BOOKING
-export const createBooking = async (req: AuthRequest, res: Response) => {
+export const createBooking = catchAsync(async (req: AuthRequest, res: Response) => {
+  const { listingId, checkIn, checkOut } = req.body;
+  const guestId = req.userId!;
+
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (nights <= 0) {
+    return res.status(400).json({ error: "Check-out must be after check-in" });
+  }
+
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+  });
+
+  if (!listing) {
+    return res.status(404).json({ error: "Listing not found" });
+  }
+
+  const totalPrice = listing.pricePerNight * nights;
+
   try {
-    const { listingId, checkIn, checkOut } = req.body;
-    const guestId = req.userId;
-
-    if (!listingId || !checkIn || !checkOut || !guestId) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (nights <= 0) {
-      return res.status(400).json({ error: "Check-out must be after check-in" });
-    }
-
-    const listing = await prisma.listing.findUnique({
-      where: { id: listingId },
-    });
-
-    if (!listing) {
-      return res.status(404).json({ error: "Listing not found" });
-    }
-
-    const totalPrice = listing.pricePerNight * nights;
-
     const booking = await prisma.$transaction(async (tx) => {
       // Check for conflicts inside the transaction
       const conflict = await tx.booking.findFirst({
@@ -50,7 +47,7 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return tx.booking.create({
         data: {
           listingId,
-          guestId: guestId!,
+          guestId,
           checkIn: start,
           checkOut: end,
           totalPrice,
@@ -82,69 +79,60 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     if (error.message === "BOOKING_CONFLICT") {
       return res.status(409).json({ error: "Booking conflict: dates already taken" });
     }
-    console.error("Create Booking Error:", error);
-    res.status(500).json({ error: "Failed to create booking" });
+    throw error;
   }
-};
+});
 
 // 2. CANCEL BOOKING
-export const cancelBooking = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const userId = req.userId;
+export const cancelBooking = catchAsync(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.userId;
 
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { guest: true, listing: true },
-    });
+  const booking = await prisma.booking.findUnique({
+    where: { id },
+    include: { guest: true, listing: true },
+  });
 
-    if (!booking) {
-      return res.status(404).json({ error: "Booking not found" });
-    }
-
-    // Only guest or admin can cancel
-    if (booking.guestId !== userId && req.role !== "ADMIN") {
-      return res.status(403).json({ error: "Unauthorized to cancel this booking" });
-    }
-
-    if (booking.status === "CANCELLED") {
-      return res.status(400).json({ error: "Booking is already cancelled" });
-    }
-
-    const updatedBooking = await prisma.booking.update({
-      where: { id },
-      data: { status: "CANCELLED" },
-      include: { guest: true, listing: true },
-    });
-
-    res.status(200).json({ message: "Booking cancelled successfully", booking: updatedBooking });
-
-    // Send cancellation email (after response)
-    sendEmail(
-      updatedBooking.guest.email,
-      "Booking Cancellation",
-      bookingCancellationEmail(
-        updatedBooking.guest.name,
-        updatedBooking.listing.title,
-        updatedBooking.checkIn.toDateString(),
-        updatedBooking.checkOut.toDateString()
-      )
-    );
-  } catch (error) {
-    res.status(500).json({ error: "Failed to cancel booking" });
+  if (!booking) {
+    return res.status(404).json({ error: "Booking not found" });
   }
-};
+
+  // Only guest or admin can cancel
+  if (booking.guestId !== userId && req.role !== "ADMIN") {
+    return res.status(403).json({ error: "Unauthorized to cancel this booking" });
+  }
+
+  if (booking.status === "CANCELLED") {
+    return res.status(400).json({ error: "Booking is already cancelled" });
+  }
+
+  const updatedBooking = await prisma.booking.update({
+    where: { id },
+    data: { status: "CANCELLED" },
+    include: { guest: true, listing: true },
+  });
+
+  res.status(200).json({ message: "Booking cancelled successfully", booking: updatedBooking });
+
+  // Send cancellation email (after response)
+  sendEmail(
+    updatedBooking.guest.email,
+    "Booking Cancellation",
+    bookingCancellationEmail(
+      updatedBooking.guest.name,
+      updatedBooking.listing.title,
+      updatedBooking.checkIn.toDateString(),
+      updatedBooking.checkOut.toDateString()
+    )
+  );
+});
 
 // 3. GET MY BOOKINGS
-export const getMyBookings = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.userId;
-    const bookings = await prisma.booking.findMany({
-      where: { guestId: userId },
-      include: { listing: true },
-    });
-    res.status(200).json(bookings);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch bookings" });
-  }
-};
+export const getMyBookings = catchAsync(async (req: AuthRequest, res: Response) => {
+  const userId = req.userId;
+  const bookings = await prisma.booking.findMany({
+    where: { guestId: userId },
+    include: { listing: true },
+  });
+  res.status(200).json(bookings);
+});

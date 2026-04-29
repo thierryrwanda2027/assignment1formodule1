@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { getAllListings, getListingById, createListing, updateListing, deleteListing, getListingStats } from "../controllers/listings.controller";
 import { authenticate } from "../middlewares/auth.middleware";
+import { validate } from "../middlewares/validate.middleware";
+import { getListingsSchema, createListingSchema, updateListingSchema } from "../schemas/listing.schema";
 
 const router = Router();
 
@@ -43,7 +45,7 @@ const router = Router();
  *               items:
  *                 $ref: '#/components/schemas/Listing'
  */
-router.get("/", getAllListings);
+router.get("/", validate(getListingsSchema), getAllListings);
 
 /**
  * @swagger
@@ -97,7 +99,7 @@ router.get("/:id", getListingById);
  *       403:
  *         description: Only hosts can create listings
  */
-router.post("/", authenticate, createListing);
+router.post("/", authenticate, validate(createListingSchema), createListing);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.post("/", authenticate, createListing);
  *       200:
  *         description: Listing updated successfully
  */
-router.put("/:id", authenticate, updateListing);
+router.put("/:id", authenticate, validate(updateListingSchema), updateListing);
 
 /**
  * @swagger
