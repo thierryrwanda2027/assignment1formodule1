@@ -146,3 +146,24 @@ export const deleteListing = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// 6. GET LISTING STATS (Raw Query)
+export const getListingStats = async (req: Request, res: Response) => {
+  try {
+    const stats = await prisma.$queryRaw`
+      SELECT
+        location,
+        COUNT(*)::int AS total,
+        ROUND(AVG("pricePerNight")::numeric, 2) AS avg_price,
+        MIN("pricePerNight") AS min_price,
+        MAX("pricePerNight") AS max_price
+      FROM "Listing"
+      GROUP BY location
+      ORDER BY total DESC
+    `;
+
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error("Listing Stats Error:", error);
+    res.status(500).json({ error: "Failed to fetch listing statistics" });
+  }
+};

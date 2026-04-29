@@ -25,25 +25,25 @@ enum BookingStatus {
 }
 
 model User {
-  id       String    @id @default(uuid())
-  name     String
-  email    String    @unique
-  username String    @unique
-  phone    String
-  avatar   String?
-  avatarPublicId String?
-  bio      String?
-  password String
-  role     Role      @default(GUEST)
-  resetToken String?
+  id               String    @id @default(uuid())
+  name             String
+  email            String    @unique
+  username         String    @unique
+  phone            String
+  avatar           String?
+  avatarPublicId   String?
+  bio              String?
+  password         String
+  role             Role      @default(GUEST)
+  resetToken       String?
   resetTokenExpiry DateTime?
-  updatedAt DateTime @updatedAt
-  listings Listing[]
-  bookings Booking[]
+  updatedAt        DateTime  @updatedAt
+  listings         Listing[]
+  bookings         Booking[]
 }
 
 model Listing {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   title         String
   description   String
   pricePerNight Float
@@ -52,11 +52,17 @@ model Listing {
   amenities     String[]
   location      String
   hostId        String
-  host          User     @relation(fields: [hostId], references: [id])
+  host          User           @relation(fields: [hostId], references: [id])
   photos        ListingPhoto[]
   bookings      Booking[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([location])
+  @@index([pricePerNight])
+  @@index([type])
+  @@index([hostId])
+  @@index([type, location])
 }
 
 model ListingPhoto {
@@ -68,16 +74,19 @@ model ListingPhoto {
 }
 
 model Booking {
-  id        String        @id @default(uuid())
-  checkIn   DateTime
-  checkOut  DateTime
+  id         String        @id @default(uuid())
+  checkIn    DateTime
+  checkOut   DateTime
   totalPrice Float
-  status    BookingStatus @default(PENDING)
-  guestId   String
-  guest     User          @relation(fields: [guestId], references: [id])
-  listingId String
-  listing   Listing       @relation(fields: [listingId], references: [id])
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-}
+  status     BookingStatus @default(PENDING)
+  guestId    String
+  guest      User          @relation(fields: [guestId], references: [id])
+  listingId  String
+  listing    Listing       @relation(fields: [listingId], references: [id])
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
+  @@index([guestId])
+  @@index([listingId])
+  @@index([listingId, checkIn, checkOut])
+}

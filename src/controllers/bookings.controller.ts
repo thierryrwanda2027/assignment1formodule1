@@ -14,14 +14,6 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const listing = await prisma.listing.findUnique({
-      where: { id: listingId },
-    });
-
-    if (!listing) {
-      return res.status(404).json({ error: "Listing not found" });
-    }
-
     const start = new Date(checkIn);
     const end = new Date(checkOut);
     const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
@@ -30,39 +22,50 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Check-out must be after check-in" });
     }
 
-    // Check for conflicts
-    const conflict = await prisma.booking.findFirst({
-      where: {
-        listingId,
-        status: { not: "CANCELLED" },
-        OR: [
-          { checkIn: { lt: end }, checkOut: { gt: start } },
-        ],
-      },
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
     });
 
-    if (conflict) {
-      return res.status(409).json({ error: "Booking conflict: dates already taken" });
+    if (!listing) {
+      return res.status(404).json({ error: "Listing not found" });
     }
 
     const totalPrice = listing.pricePerNight * nights;
 
-    const booking = await prisma.booking.create({
-      data: {
-        listingId,
-        guestId,
-        checkIn: start,
-        checkOut: end,
-        totalPrice,
-        status: "CONFIRMED",
-      },
-      include: {
-        guest: true,
-        listing: true,
-      },
+    const booking = await prisma.$transaction(async (tx) => {
+      // Check for conflicts inside the transaction
+      const conflict = await tx.booking.findFirst({
+        where: {
+          listingId,
+          status: "CONFIRMED",
+          checkIn: { lt: end },
+          checkOut: { gt: start },
+        },
+      });
+
+      if (conflict) {
+        throw new Error("BOOKING_CONFLICT");
+      }
+
+      return tx.booking.create({
+        data: {
+          listingId,
+          guestId: guestId!,
+          checkIn: start,
+          checkOut: end,
+          totalPrice,
+          status: "CONFIRMED",
+        },
+        include: {
+          guest: true,
+          listing: true,
+        },
+      });
     });
 
-    // Send confirmation email
+    res.status(201).json(booking);
+
+    // Send confirmation email (after response)
     sendEmail(
       booking.guest.email,
       "Booking Confirmation",
@@ -75,9 +78,10 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         totalPrice
       )
     );
-
-    res.status(201).json(booking);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === "BOOKING_CONFLICT") {
+      return res.status(409).json({ error: "Booking conflict: dates already taken" });
+    }
     console.error("Create Booking Error:", error);
     res.status(500).json({ error: "Failed to create booking" });
   }
@@ -113,7 +117,9 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
       include: { guest: true, listing: true },
     });
 
-    // Send cancellation email
+    res.status(200).json({ message: "Booking cancelled successfully", booking: updatedBooking });
+
+    // Send cancellation email (after response)
     sendEmail(
       updatedBooking.guest.email,
       "Booking Cancellation",
@@ -124,8 +130,6 @@ export const cancelBooking = async (req: AuthRequest, res: Response) => {
         updatedBooking.checkOut.toDateString()
       )
     );
-
-    res.status(200).json({ message: "Booking cancelled successfully", booking: updatedBooking });
   } catch (error) {
     res.status(500).json({ error: "Failed to cancel booking" });
   }

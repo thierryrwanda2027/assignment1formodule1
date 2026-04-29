@@ -31,11 +31,11 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
-    // Send welcome email (non-blocking)
-    sendEmail(user.email, "Welcome to Airbnb!", welcomeEmail(user.name, user.role));
-
     const { password: _, ...userWithoutPassword } = user;
     res.status(201).json(userWithoutPassword);
+
+    // Send welcome email (non-blocking, after response)
+    sendEmail(user.email, "Welcome to Airbnb!", welcomeEmail(user.name, user.role));
   } catch (error: any) {
     if (error.code === "P2002") {
       return res.status(409).json({ error: "Email or username already exists" });
@@ -90,10 +90,13 @@ export const forgotPassword = async (req: Request, res: Response) => {
       },
     });
 
-    const resetLink = `${process.env["API_URL"]}/auth/reset-password/${resetToken}`;
-    sendEmail(user.email, "Password Reset Request", passwordResetEmail(user.name, resetLink));
-
+    const apiUrl = process.env["API_URL"] || "http://localhost:3000";
+    const resetLink = `${apiUrl}/auth/reset-password/${resetToken}`;
+    
     res.status(200).json({ message: "If an account exists, a reset link was sent." });
+
+    // Send email after response
+    sendEmail(user.email, "Password Reset Request", passwordResetEmail(user.name, resetLink));
   } catch (error) {
     res.status(500).json({ error: "Failed to process forgot password" });
   }

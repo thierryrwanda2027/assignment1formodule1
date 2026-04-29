@@ -7,11 +7,15 @@ import listingRoutes from './routes/listings.routes';
 import authRoutes from './routes/auth.routes';
 import bookingRoutes from './routes/bookings.routes';
 import uploadRoutes from './routes/upload.routes';
+import { setupSwagger } from "./config/swagger";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// Initialize Swagger Docs
+setupSwagger(app);
 
 // ROUTE MOUNTING
 app.use('/auth', authRoutes);

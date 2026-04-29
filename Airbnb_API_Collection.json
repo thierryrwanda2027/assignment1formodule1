@@ -1,0 +1,72 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-4a5b-b6c7-d8e9f0a1b2c3",
+		"name": "Airbnb API - Assignment 1",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"NIYONKURU Thierry\",\n    \"email\": \"niyonkuruthierry37@gmail.com\",\n    \"username\": \"thierry_n\",\n    \"password\": \"@Thierry12\",\n    \"phone\": \"0788888888\",\n    \"role\": \"GUEST\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:3000/auth/register",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"niyonkuruthierry37@gmail.com\",\n    \"password\": \"@Thierry12\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:3000/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
