@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import prisma from "../config/prisma";
 import { sendEmail } from "../config/email";
@@ -7,7 +7,7 @@ import { catchAsync } from "../utils/catchAsync";
 
 // 1. CREATE BOOKING
 export const createBooking = catchAsync(async (req: AuthRequest, res: Response) => {
-  const { listingId, checkIn, checkOut } = req.body;
+  const { listingId, checkIn, checkOut, guests } = req.body;
   const guestId = req.userId!;
 
   const start = new Date(checkIn);
@@ -50,6 +50,7 @@ export const createBooking = catchAsync(async (req: AuthRequest, res: Response) 
           guestId,
           checkIn: start,
           checkOut: end,
+          guests: Number(guests),
           totalPrice,
           status: "CONFIRMED",
         },
@@ -127,12 +128,109 @@ export const cancelBooking = catchAsync(async (req: AuthRequest, res: Response) 
   );
 });
 
-// 3. GET MY BOOKINGS
+// 3. GET MY BOOKINGS (Paginated)
 export const getMyBookings = catchAsync(async (req: AuthRequest, res: Response) => {
   const userId = req.userId;
-  const bookings = await prisma.booking.findMany({
-    where: { guestId: userId },
-    include: { listing: true },
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+
+  const [bookings, total] = await Promise.all([
+    prisma.booking.findMany({
+      where: { guestId: userId },
+      skip,
+      take: limit,
+      include: { listing: { select: { title: true, location: true } } },
+    }),
+    prisma.booking.count({ where: { guestId: userId } }),
+  ]);
+
+  res.status(200).json({
+    data: bookings,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    }
   });
-  res.status(200).json(bookings);
 });
+
+// 3.5 GET USER BOOKINGS BY ID (Paginated)
+export const getUserBookings = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+
+  // Verify user exists
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const [bookings, total] = await Promise.all([
+    prisma.booking.findMany({
+      where: { guestId: id },
+      skip,
+      take: limit,
+      include: { listing: { select: { title: true, location: true } } },
+    }),
+    prisma.booking.count({ where: { guestId: id } }),
+  ]);
+
+  res.status(200).json({
+    data: bookings,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    }
+  });
+});
+
+// 4. GET ALL BOOKINGS (Paginated)
+export const getAllBookings = catchAsync(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+
+  const [bookings, total] = await Promise.all([
+    prisma.booking.findMany({
+      skip,
+      take: limit,
+      include: {
+        guest: { select: { name: true } },
+        listing: { select: { title: true, location: true } }
+      },
+    }),
+    prisma.booking.count(),
+  ]);
+
+  res.status(200).json({
+    data: bookings,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    }
+  });
+});
+
+// 5. GET BOOKING BY ID
+export const getBookingById = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const booking = await prisma.booking.findUnique({
+    where: { id },
+    include: { guest: true, listing: true }
+  });
+
+  if (!booking) {
+    return res.status(404).json({ error: "Booking not found" });
+  }
+
+  res.status(200).json(booking);
+});
+

@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { createBooking, cancelBooking, getMyBookings } from "../controllers/bookings.controller";
-import { authenticate } from "../middlewares/auth.middleware";
-import { validate } from "../middlewares/validate.middleware";
-import { createBookingSchema } from "../schemas/booking.schema";
+import { createBooking, cancelBooking, getMyBookings, getAllBookings, getBookingById } from "../../controllers/bookings.controller";
+import { strictLimiter } from "../../middlewares/rateLimiter";
+import { authenticate } from "../../middlewares/auth.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import { createBookingSchema } from "../../schemas/booking.schema";
 
 const router = Router();
 
@@ -58,7 +59,7 @@ const router = Router();
  *       201:
  *         description: Booking created successfully
  */
-router.post("/", authenticate, validate(createBookingSchema), createBooking);
+router.post("/", authenticate, strictLimiter, validate(createBookingSchema), createBooking);
 
 /**
  * @swagger
@@ -93,5 +94,8 @@ router.get("/me", authenticate, getMyBookings);
  *         description: Booking cancelled successfully
  */
 router.post("/:id/cancel", authenticate, cancelBooking);
+
+router.get("/", authenticate, getAllBookings);
+router.get("/:id", authenticate, getBookingById);
 
 export default router;

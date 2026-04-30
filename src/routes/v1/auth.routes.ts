@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { register, login, forgotPassword, resetPassword } from "../controllers/auth.controller";
-import { validate } from "../middlewares/validate.middleware";
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../schemas/auth.schema";
+import { register, login, forgotPassword, resetPassword } from "../../controllers/auth.controller";
+import { validate } from "../../middlewares/validate.middleware";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../../schemas/auth.schema";
+import { strictLimiter } from "../../middlewares/rateLimiter";
 
 const router = Router();
 
@@ -73,7 +74,7 @@ const router = Router();
  *       400:
  *         description: Missing required fields
  */
-router.post("/register", validate(registerSchema), register);
+router.post("/register", strictLimiter, validate(registerSchema), register);
 
 /**
  * @swagger
@@ -100,7 +101,7 @@ router.post("/register", validate(registerSchema), register);
  *                 user:
  *                   $ref: '#/components/schemas/User'
  */
-router.post("/login", validate(loginSchema), login);
+router.post("/login", strictLimiter, validate(loginSchema), login);
 
 /**
  * @swagger

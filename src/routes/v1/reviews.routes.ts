@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { createReview, getListingReviews, deleteReview } from "../controllers/reviews.controller";
-import { authenticate } from "../middlewares/auth.middleware";
-import { validate } from "../middlewares/validate.middleware";
-import { createReviewSchema } from "../schemas/review.schema";
+import { createReview, getListingReviews, deleteReview } from "../../controllers/reviews.controller";
+import { authenticate } from "../../middlewares/auth.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import { createReviewSchema } from "../../schemas/review.schema";
+import { strictLimiter } from "../../middlewares/rateLimiter";
 
 const router = Router();
 
@@ -32,7 +33,7 @@ const router = Router();
  *       201:
  *         description: Review created
  */
-router.post("/", authenticate, validate(createReviewSchema), createReview);
+router.post("/", authenticate, strictLimiter, validate(createReviewSchema), createReview);
 
 /**
  * @swagger

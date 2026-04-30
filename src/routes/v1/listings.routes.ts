@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { getAllListings, getListingById, createListing, updateListing, deleteListing, getListingStats } from "../controllers/listings.controller";
-import { authenticate } from "../middlewares/auth.middleware";
-import { validate } from "../middlewares/validate.middleware";
-import { getListingsSchema, createListingSchema, updateListingSchema } from "../schemas/listing.schema";
+import { getAllListings, getListingById, createListing, updateListing, deleteListing } from "../../controllers/listings.controller";
+import { getListingStats } from "../../controllers/stats.controller";
+import { authenticate } from "../../middlewares/auth.middleware";
+import { validate } from "../../middlewares/validate.middleware";
+import { getListingsSchema, createListingSchema, updateListingSchema } from "../../schemas/listing.schema";
 
 const router = Router();
 

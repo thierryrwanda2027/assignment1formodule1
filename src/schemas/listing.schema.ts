@@ -31,5 +31,7 @@ export const getListingsSchema = z.object({
     location: z.string().optional(),
     minPrice: z.string().regex(/^\\d+$/).transform(Number).optional(),
     maxPrice: z.string().regex(/^\\d+$/).transform(Number).optional(),
+    type: z.string().optional(),
+    guests: z.string().regex(/^\\d+$/).transform(Number).optional(),
   }).optional(),
 });

@@ -1,6 +1,8 @@
 import { Router } from 'express';
-import { getAllUsers, getUserById, getMe, updateUser, deleteUser } from '../controllers/users.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { getAllUsers, getUserById, getMe, updateUser, deleteUser } from '../../controllers/users.controller';
+import { getUsersStats } from '../../controllers/stats.controller';
+import { getUserBookings } from '../../controllers/bookings.controller';
+import { authenticate } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -23,6 +25,18 @@ const router = Router();
  *                 $ref: '#/components/schemas/User'
  */
 router.get('/', authenticate, getAllUsers);
+
+/**
+ * @swagger
+ * /users/stats:
+ *   get:
+ *     summary: Get user statistics
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: Statistics retrieved successfully
+ */
+router.get('/stats', getUsersStats);
 
 /**
  * @swagger
@@ -67,6 +81,24 @@ router.get('/me', authenticate, getMe);
  *         description: User not found
  */
 router.get('/:id', authenticate, getUserById);
+
+/**
+ * @swagger
+ * /users/{id}/bookings:
+ *   get:
+ *     summary: Get all bookings for a user
+ *     tags: [Users, Bookings]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User bookings retrieved
+ */
+router.get('/:id/bookings', authenticate, getUserBookings);
 
 /**
  * @swagger

@@ -3,6 +3,7 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import prisma from "../config/prisma";
 import { getOptimizedUrl } from "../utils/cloudinary";
 import { catchAsync } from "../utils/catchAsync";
+import { getCache, setCache, clearCachePrefix } from "../config/cache";
 
 // 1. GET ALL LISTINGS (WITH PAGINATION AND FILTERING)
 export const getAllListings = catchAsync(async (req: Request, res: Response) => {
@@ -11,6 +12,8 @@ export const getAllListings = catchAsync(async (req: Request, res: Response) => 
   const skip = (page - 1) * limit;
 
   const location = req.query.location as string;
+  const type = req.query.type as string;
+  const guests = req.query.guests ? parseInt(req.query.guests as string) : undefined;
   const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
   const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
 
@@ -18,25 +21,39 @@ export const getAllListings = catchAsync(async (req: Request, res: Response) => 
   if (location) {
     where.location = { contains: location, mode: "insensitive" };
   }
+  if (type) {
+    where.type = type;
+  }
+  if (guests !== undefined) {
+    where.guests = { gte: guests };
+  }
   if (minPrice !== undefined || maxPrice !== undefined) {
     where.pricePerNight = {};
     if (minPrice !== undefined) where.pricePerNight.gte = minPrice;
     if (maxPrice !== undefined) where.pricePerNight.lte = maxPrice;
   }
 
-  const listings = await prisma.listing.findMany({
-    where,
-    skip,
-    take: limit,
-    include: {
-      host: {
-        select: { name: true, avatar: true }
-      },
-      photos: true
-    }
-  });
+  const cacheKey = `listings_${page}_${limit}_${location || ''}_${type || ''}_${guests || ''}_${minPrice || ''}_${maxPrice || ''}`;
+  const cached = getCache(cacheKey);
 
-  const total = await prisma.listing.count({ where });
+  if (cached) {
+    return res.status(200).json(cached);
+  }
+
+  const [listings, total] = await Promise.all([
+    prisma.listing.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        host: {
+          select: { name: true, email: true, avatar: true }
+        },
+        photos: true
+      }
+    }),
+    prisma.listing.count({ where })
+  ]);
 
   // Optimize photo URLs
   const optimizedListings = listings.map((listing: any) => ({
@@ -47,7 +64,7 @@ export const getAllListings = catchAsync(async (req: Request, res: Response) => 
     }))
   }));
 
-  res.status(200).json({
+  const responseData = {
     data: optimizedListings,
     meta: {
       total,
@@ -55,7 +72,11 @@ export const getAllListings = catchAsync(async (req: Request, res: Response) => 
       limit,
       totalPages: Math.ceil(total / limit)
     }
-  });
+  };
+
+  setCache(cacheKey, responseData, 60);
+
+  res.status(200).json(responseData);
 });
 
 // 2. GET LISTING BY ID
@@ -109,6 +130,9 @@ export const createListing = catchAsync(async (req: AuthRequest, res: Response) 
     }
   });
 
+  clearCachePrefix("listings_");
+  clearCachePrefix("stats_listings");
+
   res.status(201).json(newListing);
 });
 
@@ -131,6 +155,9 @@ export const updateListing = catchAsync(async (req: AuthRequest, res: Response) 
     data: req.body
   });
 
+  clearCachePrefix("listings_");
+  clearCachePrefix("stats_listings");
+
   res.status(200).json(updatedListing);
 });
 
@@ -149,6 +176,10 @@ export const deleteListing = catchAsync(async (req: AuthRequest, res: Response) 
   }
 
   await prisma.listing.delete({ where: { id } });
+
+  clearCachePrefix("listings_");
+  clearCachePrefix("stats_listings");
+
   res.status(200).json({ message: "Listing deleted successfully" });
 });
 
