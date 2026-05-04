@@ -86,6 +86,20 @@ async function main() {
     },
   });
 
+  const userPasswordHash = await bcrypt.hash("@Thierry12", 10);
+  await prisma.user.upsert({
+    where: { email: "niyonkuruthierry37@gmail.com" },
+    update: {},
+    create: {
+      name: "Thierry Niyonkuru",
+      email: "niyonkuruthierry37@gmail.com",
+      username: "thierry_owner",
+      password: userPasswordHash,
+      role: "ADMIN",
+      phone: "0788888888",
+    },
+  });
+
   // 3. Create listings
   const apartment = await prisma.listing.create({
     data: {
@@ -152,6 +166,7 @@ async function main() {
       checkIn: tomorrow,
       checkOut: new Date(tomorrow.getTime() + 86400000 * 2), // 2 nights
       totalPrice: 120.5 * 2,
+      guests: 2,
       status: "CONFIRMED",
     },
   });
@@ -163,6 +178,7 @@ async function main() {
       checkIn: nextWeek,
       checkOut: new Date(nextWeek.getTime() + 86400000 * 3), // 3 nights
       totalPrice: 200.0 * 3,
+      guests: 4,
       status: "PENDING",
     },
   });
@@ -174,6 +190,7 @@ async function main() {
       checkIn: tomorrow,
       checkOut: new Date(tomorrow.getTime() + 86400000 * 5), // 5 nights
       totalPrice: 500.0 * 5,
+      guests: 6,
       status: "CONFIRMED",
     },
   });
