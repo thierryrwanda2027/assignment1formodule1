@@ -17,7 +17,17 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(cors());
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
+      connectSrc: ["'self'", "http://localhost:3000", process.env.API_URL || ""],
+    },
+  },
+}));
 app.use(compression());
 app.use(generalLimiter);
 app.use(process.env.NODE_ENV === "production" ? morgan("combined") : morgan("dev"));

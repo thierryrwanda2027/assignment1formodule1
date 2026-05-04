@@ -95,7 +95,44 @@ router.get("/me", authenticate, getMyBookings);
  */
 router.post("/:id/cancel", authenticate, cancelBooking);
 
+/**
+ * @swagger
+ * /bookings:
+ *   get:
+ *     summary: Get all bookings (Admin/Host)
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all bookings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Booking'
+ */
 router.get("/", authenticate, getAllBookings);
+
+/**
+ * @swagger
+ * /bookings/{id}:
+ *   get:
+ *     summary: Get booking by ID
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Booking details retrieved
+ */
 router.get("/:id", authenticate, getBookingById);
 
 export default router;
