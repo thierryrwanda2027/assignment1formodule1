@@ -12,8 +12,8 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: "http://localhost:3000/api/v1",
-        description: "Development server",
+        url: `${process.env.API_URL || "http://localhost:3000"}/api/v1`,
+        description: "API Server",
       },
     ],
     components: {
@@ -40,5 +40,6 @@ export function setupSwagger(app: Express) {
     res.json(swaggerSpec);
   });
 
-  console.log("Swagger docs available at http://localhost:3000/api-docs");
+  const apiUrl = process.env.API_URL || "http://localhost:3000";
+  console.log(`Swagger docs available at ${apiUrl}/api-docs`);
 }

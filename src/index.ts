@@ -27,6 +27,9 @@ app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date() });
 });
 
+// Redirect root to API docs
+app.get("/", (req, res) => res.redirect("/api-docs"));
+
 // Initialize Swagger Docs
 setupSwagger(app);
 
